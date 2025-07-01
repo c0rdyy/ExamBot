@@ -1,9 +1,25 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-main = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text='👤 Профиль')],
-                                     [KeyboardButton(text='📥 Загрузить файл'),
-                                      KeyboardButton(text='📂 Запросить файл')],
-                                     [KeyboardButton(text='ℹ️ О боте'),
-                                      KeyboardButton(text='❓ Помощь')]],
-                           resize_keyboard=True,
-                           input_field_placeholder='Выберите пункт меню...')
+def user_main_menu_keyboard() -> ReplyKeyboardMarkup:
+    keyboard = [
+        [KeyboardButton(text="🧠 Начать тест")],
+        [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="🏆 Рейтинг")],
+        [KeyboardButton(text="❓ Помощь")]
+    ]
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+def admin_main_menu_keyboard() -> ReplyKeyboardMarkup:
+    keyboard = [
+        [KeyboardButton(text="🧠 Начать тест")],
+        [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="🏆 Рейтинг")],
+        [KeyboardButton(text="🛠 Админ-панель"), KeyboardButton(text="❓ Помощь")]
+    ]
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
