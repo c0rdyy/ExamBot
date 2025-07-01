@@ -9,7 +9,6 @@ load_dotenv(find_dotenv())
 
 API_TOKEN = os.getenv('API_TOKEN')
 SQLALCHEMY_URL = os.getenv('SQLALCHEMY_URL')
-ADMIN_IDS = list(map(int, os.getenv("ADMIN_IDS", "").split(",")))
 
 bot = Bot(API_TOKEN)
 dp = Dispatcher(bot=bot, storage=MemoryStorage())
