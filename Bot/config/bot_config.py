@@ -8,7 +8,6 @@ from handlers.start.start import start_router
 load_dotenv(find_dotenv())
 
 API_TOKEN = os.getenv('API_TOKEN')
-SQLALCHEMY_URL = os.getenv('SQLALCHEMY_URL')
 
 bot = Bot(API_TOKEN)
 dp = Dispatcher(bot=bot, storage=MemoryStorage())

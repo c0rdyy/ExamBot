@@ -2,10 +2,10 @@ import asyncio
 
 from config.bot_config import dp, bot, routers
 from handlers.start.start import *
-# from database.models import async_main
+from database.models import async_main
 
 async def main():
-    # await async_main()
+    await async_main()
 
     for router in routers:
         dp.include_router(router)

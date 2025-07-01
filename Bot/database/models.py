@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_
 from sqlalchemy import BigInteger, String, Integer, Float, Boolean, JSON, DateTime, ForeignKey
 from sqlalchemy.sql import func
 
-from config.bot_config import SQLALCHEMY_URL
+from config.settings import SQLALCHEMY_URL
 
 engine = create_async_engine(SQLALCHEMY_URL, echo=True)
 
