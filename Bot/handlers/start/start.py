@@ -1,24 +1,30 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
-from aiogram.filters.command import Command
+from aiogram.types import Message, CallbackQuery, FSInputFile
 
 from config.settings import ADMIN_IDS
 from keyboards.test import *
 from keyboards.test_keyboard import *
 from handlers.start.states import TestState
-from database.requests import get_random_questions, save_test_result
+from database.requests import get_random_questions, save_test_result, get_or_create_user
 
 start_router = Router()
 
 @start_router.message(F.text == "/start")
 async def cmd_start(message: Message):
+    photo = FSInputFile("images/Main_menu.png")
+    text = "👋 Добро пожаловать в главное меню! Выберите действие:"
+
+    await get_or_create_user(
+        user_id=message.from_user.id,
+        name=message.from_user.full_name
+    )
+
     if message.from_user.id in ADMIN_IDS:
         keyboard = admin_main_menu_keyboard()
     else:
         keyboard = user_main_menu_keyboard()
 
-    await message.answer("Добро пожаловать в главное меню! Выберите действие:", 
-                         reply_markup=keyboard)
+    await message.answer_photo(photo=photo, caption=text, reply_markup=keyboard)
 
 @start_router.callback_query(TestState.choosing_difficulty)
 async def choose_difficulty(callback: CallbackQuery, state: FSMContext):
@@ -57,7 +63,6 @@ async def ask_next_question(message: Message, state: FSMContext):
         else:
             score = 1
 
-        # Балл в рейтинг с весом сложности
         weight = {"easy": 1.0, "medium": 1.5, "hard": 2.0}
         rating_score = score * weight[data["difficulty"]]
 
@@ -71,11 +76,14 @@ async def ask_next_question(message: Message, state: FSMContext):
 
     q = questions[index]
     options = q.options
-    kb = build_question_keyboard(options)
 
-    await message.answer(f"Вопрос {index+1}:\n{q.text}", reply_markup=kb)
+    option_lines = [f"{i+1}. {opt}" for i, opt in enumerate(options)]
+    question_text = f"Вопрос {index + 1}:\n{q.text}\n\n" + "\n".join(option_lines)
 
-    # 👇 Обязательное обновление состояния, чтобы handle_answer() работал
+    kb = build_number_keyboard(len(options))
+
+    await message.answer(question_text, reply_markup=kb)
+
     await state.set_state(TestState.answering)
 
 
@@ -95,26 +103,33 @@ async def handle_answer(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await ask_next_question(callback.message, state)
 
+
 @start_router.message(F.text == "/test")
 @start_router.message(F.text == "🧠 Начать тест")
 async def handle_test(message: Message, state: FSMContext):
     await state.clear()
-    await message.answer("Выберите уровень сложности:", reply_markup=test_keyboard)
+    text = "Выберите уровень сложности:"
+    photo = FSInputFile("images/test/start_test.jpg")
+    await message.answer_photo(photo=photo, caption=text, reply_markup=test_keyboard)
     await state.set_state(TestState.choosing_difficulty)
+
 
 @start_router.message(F.text == "/profile")
 @start_router.message(F.text == "👤 Профиль")
 async def handle_profile(message: Message):
     await message.answer("Ваш профиль:")
 
+
 @start_router.message(F.text == "/rate")
 @start_router.message(F.text == "🏆 Рейтинг")
 async def handle_rating(message: Message):
     await message.answer("Текущий рейтинг:")
 
+
 @start_router.message(F.text == "🛠 Админ-панель")
 async def handle_admin(message: Message):
     await message.answer("Панель администратора:")
+
 
 @start_router.message(F.text == "/help")
 @start_router.message(F.text == "❓ Помощь")
