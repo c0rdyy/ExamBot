@@ -2,6 +2,7 @@ import asyncio
 
 from config.bot_config import dp, bot, routers
 from handlers.start.start import *
+from handlers.admin_panel.admin import *
 from database.models import async_main
 
 async def main():

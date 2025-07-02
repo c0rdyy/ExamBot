@@ -31,3 +31,19 @@ async def get_or_create_user(user_id: int, name: str) -> User:
             await session.commit()
 
         return user
+
+async def add_question(text: str, options: list[str], correct_index: int, difficulty: str):
+    async with async_session() as session:
+        question = Question(
+            text=text,
+            options=options,
+            correct_index=correct_index,
+            difficulty=difficulty
+        )
+        session.add(question)
+        await session.commit()
+
+async def get_all_questions():
+    async with async_session() as session:
+        result = await session.execute(select(Question))
+        return result.scalars().all()

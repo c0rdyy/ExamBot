@@ -126,11 +126,6 @@ async def handle_rating(message: Message):
     await message.answer("Текущий рейтинг:")
 
 
-@start_router.message(F.text == "🛠 Админ-панель")
-async def handle_admin(message: Message):
-    await message.answer("Панель администратора:")
-
-
 @start_router.message(F.text == "/help")
 @start_router.message(F.text == "❓ Помощь")
 async def handle_help(message: Message):
