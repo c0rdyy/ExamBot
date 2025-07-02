@@ -2,15 +2,11 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters.command import Command
 
-from sqlalchemy import select
-from database.models import async_session, Question
-
-from sqlalchemy.sql import func
-
-from config.admin_ids import ADMIN_IDS
+from config.settings import ADMIN_IDS
 from keyboards.test import *
 from keyboards.test_keyboard import *
-from database.states import TestState
+from handlers.start.states import TestState
+from database.requests import get_random_questions, save_test_result
 
 start_router = Router()
 
@@ -21,18 +17,16 @@ async def cmd_start(message: Message):
     else:
         keyboard = user_main_menu_keyboard()
 
-    await message.answer("Добро пожаловать в главное меню! Выберите действие:", reply_markup=keyboard)
+    await message.answer("Добро пожаловать в главное меню! Выберите действие:", 
+                         reply_markup=keyboard)
 
 @start_router.callback_query(TestState.choosing_difficulty)
 async def choose_difficulty(callback: CallbackQuery, state: FSMContext):
     difficulty = callback.data.replace("difficulty_", "")
-    async with async_session() as session:
-        result = await session.execute(
-            select(Question).where(Question.difficulty == difficulty).order_by(func.random()).limit(10)
-        )
-        questions = result.scalars().all()
 
-    if len(questions) < 10:
+    questions = await get_random_questions(difficulty)
+
+    if len(questions) < 1:
         await callback.message.answer("Недостаточно вопросов для этого уровня.")
         await state.clear()
         return
@@ -41,13 +35,13 @@ async def choose_difficulty(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await ask_next_question(callback.message, state)
 
+
 async def ask_next_question(message: Message, state: FSMContext):
     data = await state.get_data()
     index = data["index"]
     questions = data["questions"]
 
     if index >= len(questions):
-        # Завершить тест
         total = len(questions)
         correct = data["correct"]
         percent = correct / total * 100
@@ -67,16 +61,7 @@ async def ask_next_question(message: Message, state: FSMContext):
         weight = {"easy": 1.0, "medium": 1.5, "hard": 2.0}
         rating_score = score * weight[data["difficulty"]]
 
-        # Сохраняем результат в БД
-        from models import Result
-        async with async_session() as session:
-            session.add(Result(
-                user_id=message.from_user.id,
-                score=score,
-                rating_score=rating_score,
-                difficulty=data["difficulty"]
-            ))
-            await session.commit()
+        await save_test_result(message.from_user.id, score, rating_score, data["difficulty"])
 
         await message.answer(f"✅ Тест завершён!\n"
                              f"Правильных ответов: {correct} из {total}\n"
@@ -86,12 +71,13 @@ async def ask_next_question(message: Message, state: FSMContext):
 
     q = questions[index]
     options = q.options
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=opt, callback_data=f"answer_{i}")]
-        for i, opt in enumerate(options)
-    ])
+    kb = build_question_keyboard(options)
 
     await message.answer(f"Вопрос {index+1}:\n{q.text}", reply_markup=kb)
+
+    # 👇 Обязательное обновление состояния, чтобы handle_answer() работал
+    await state.set_state(TestState.answering)
+
 
 @start_router.callback_query(F.data.startswith("answer_"), TestState.answering)
 async def handle_answer(callback: CallbackQuery, state: FSMContext):
@@ -112,6 +98,7 @@ async def handle_answer(callback: CallbackQuery, state: FSMContext):
 @start_router.message(F.text == "/test")
 @start_router.message(F.text == "🧠 Начать тест")
 async def handle_test(message: Message, state: FSMContext):
+    await state.clear()
     await message.answer("Выберите уровень сложности:", reply_markup=test_keyboard)
     await state.set_state(TestState.choosing_difficulty)
 
