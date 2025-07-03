@@ -4,8 +4,9 @@ from aiogram.types import Message, CallbackQuery, FSInputFile
 from config.settings import ADMIN_IDS
 from keyboards.test import *
 from keyboards.test_keyboard import *
+from keyboards.profile_keyboard import *
 from handlers.start.states import TestState
-from database.requests import get_random_questions, save_test_result, get_or_create_user
+from database.requests import get_random_questions, save_test_result, get_or_create_user, get_user_profile
 
 start_router = Router()
 
@@ -113,13 +114,6 @@ async def handle_test(message: Message, state: FSMContext):
     await message.answer_photo(photo=photo, caption=text, reply_markup=test_keyboard)
     await state.set_state(TestState.choosing_difficulty)
 
-
-@start_router.message(F.text == "/profile")
-@start_router.message(F.text == "👤 Профиль")
-async def handle_profile(message: Message):
-    await message.answer("Ваш профиль:")
-
-
 @start_router.message(F.text == "/rate")
 @start_router.message(F.text == "🏆 Рейтинг")
 async def handle_rating(message: Message):
@@ -141,3 +135,22 @@ async def handle_help(message: Message):
     )
     await message.answer(help_text, parse_mode="Markdown")
 
+@start_router.message(F.text == "/profile")
+@start_router.message(F.text == "👤 Профиль")
+async def handle_profile(message: Message):
+    user_data = await get_user_profile(message.from_user.id)
+    if not user_data:
+        await message.answer("Профиль не найден.")
+        return
+
+    text = (
+        f"👤 *Имя:* {user_data['name']}\n"
+        f"📝 *Пройдено тестов:* {user_data['total_tests']}\n"
+        f"📊 *Средний результат:* {user_data['avg_score']}/5\n"
+        f"🏅 *Рейтинг:* {user_data['total_rating']}"
+    )
+
+    if user_data["photo_id"]:
+        photo = FSInputFile(user_data["photo_id"])
+        await message.answer_photo(photo=photo, caption=text, parse_mode="Markdown")
+    await message.answer(text, parse_mode="Markdown", reply_markup=edit_profile_kb)
