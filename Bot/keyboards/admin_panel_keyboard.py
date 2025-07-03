@@ -13,6 +13,9 @@ admin_panel_back_to_main_menu = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_main_menu")]
 ])
 
+back_to_admin_menu = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_admin_menu")]
+])
 
 cancel_add_question_reply_keyboard = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="❌ Отмена")]],
@@ -57,6 +60,9 @@ def build_question_list_keyboard(questions: list, page: int, per_page: int) -> I
             text="◀️ Назад", 
             callback_data=f"questions_page_{page - 1}"
         ))
+        buttons.append([
+        InlineKeyboardButton(text="⏮ В начало", callback_data="questions_page_0")
+    ])
     if end < len(questions):
         nav_buttons.append(InlineKeyboardButton(
             text="▶️ Вперёд", 
@@ -65,6 +71,10 @@ def build_question_list_keyboard(questions: list, page: int, per_page: int) -> I
 
     if nav_buttons:
         buttons.append(nav_buttons)
+
+    buttons.append([
+        InlineKeyboardButton(text="🔙 В админ-панель", callback_data="cancel")
+    ])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -85,5 +95,17 @@ def view_question_keyboard(question_id: int) -> InlineKeyboardMarkup:
                 text="◀️ Назад к списку", 
                 callback_data="back_to_question_list"
             )
+        ]
+    ])
+
+def confirm_delete_keyboard(question_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="✅ Да, удалить", 
+                callback_data=f"confirm_delete_{question_id}"),
+            InlineKeyboardButton(
+                text="❌ Отмена", 
+                callback_data="cancel_delete")
         ]
     ])

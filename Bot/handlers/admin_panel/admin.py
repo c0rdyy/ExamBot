@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from handlers.admin_panel.admin_panel_states import AddQuestionState, AdminPanelState
 from keyboards.admin_panel_keyboard import *
 from keyboards.test import user_main_menu_keyboard, admin_main_menu_keyboard
-from database.requests import add_question, get_all_questions
+from database.requests import add_question, get_all_questions, delete_question
 from config.settings import ADMIN_IDS
 
 QUESTION_PAGE_SIZE = 5
@@ -32,6 +32,8 @@ async def handle_add_question(message: Message, state: FSMContext):
                                reply_markup=admin_panel_main_menu)
     await state.set_state(AdminPanelState.active)
 
+###################################################################################################
+
 # 📋 Все вопросы
 @admin_router.callback_query(F.data == "all_questions")
 async def handle_all_questions(callback: CallbackQuery, state: FSMContext):
@@ -54,6 +56,8 @@ async def handle_all_questions(callback: CallbackQuery, state: FSMContext):
 
 @admin_router.callback_query(F.data.startswith("questions_page_"))
 async def handle_question_page(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
     page = int(callback.data.split("_")[-1])
     data = await state.get_data()
     questions = data.get("question_list", [])
@@ -63,8 +67,18 @@ async def handle_question_page(callback: CallbackQuery, state: FSMContext):
         reply_markup=build_question_list_keyboard(questions, page=page, per_page=QUESTION_PAGE_SIZE)
     )
 
+    await state.update_data(current_page=page)
+
 @admin_router.callback_query(F.data.startswith("view_question_"))
 async def handle_view_question(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    question_id = int(callback.data.split("_")[-1])
+    data = await state.get_data()
+
+    current_page = data.get("current_page", 0)
+    await state.update_data(viewing_from_page=current_page)
+
     question_id = int(callback.data.split("_")[-1])
     data = await get_all_questions()
     question = next((q for q in data if q.id == question_id), None)
@@ -86,13 +100,20 @@ async def handle_view_question(callback: CallbackQuery, state: FSMContext):
 
 @admin_router.callback_query(F.data == "back_to_question_list")
 async def handle_back_to_list(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
     data = await state.get_data()
     questions = data.get("question_list", [])
+    from_page = data.get("viewing_from_page", 0)
+
     await callback.message.edit_text(
         "📋 Все вопросы:",
-        reply_markup=build_question_list_keyboard(questions, page=0, per_page=QUESTION_PAGE_SIZE)
+        reply_markup=build_question_list_keyboard(questions, page=from_page, per_page=5)
     )
 
+    await state.update_data(current_page=from_page)
+
+###################################################################################################
 
 # ➕ Добавить вопрос
 @admin_router.callback_query(F.data == "add_question", AdminPanelState.active)
@@ -211,10 +232,68 @@ async def handle_difficulty(callback: CallbackQuery, state: FSMContext):
 
     await state.clear()
 
+###################################################################################################
+
 # 🗑 Удалить вопрос
-@admin_router.callback_query(F.data == "delete_question")
+@admin_router.callback_query(F.data.startswith("delete_question_"))
 async def handle_delete_question(callback: CallbackQuery):
-    await callback.message.edit_text("🗑 Выберите вопрос для удаления")
+    question_id = int(callback.data.split("_")[-1])
+
+    await callback.message.edit_text(
+        f"❗ Вы точно хотите удалить вопрос #{question_id}?",
+        reply_markup=confirm_delete_keyboard(question_id)
+    )
+
+@admin_router.callback_query(F.data.startswith("confirm_delete_"))
+async def confirm_delete_question(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    question_id = int(callback.data.split("_")[-1])
+    await delete_question(question_id)
+
+    data = await state.get_data()
+    questions = data.get("question_list", [])
+    updated_questions = [q for q in questions if q.id != question_id]
+
+    await state.update_data(question_list=updated_questions)
+
+    await callback.message.edit_text(
+        "✅ Вопрос удалён!",
+        reply_markup=back_to_admin_menu
+    )
+
+@admin_router.callback_query(F.data == "cancel_delete")
+async def cancel_delete(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    data = await state.get_data()
+    questions = data.get("question_list", [])
+    current_page = data.get("viewing_from_page", 0)
+
+    await callback.message.edit_text(
+        "📋 Все вопросы:",
+        reply_markup=build_question_list_keyboard(
+            questions,
+            page=current_page,
+            per_page=QUESTION_PAGE_SIZE
+            )
+    )
+
+@admin_router.callback_query(F.data == "back_to_admin_menu")
+async def cancel_delete(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    data = await state.get_data()
+    questions = data.get("question_list", [])
+    current_page = data.get("viewing_from_page", 0)
+
+    await callback.message.edit_text(
+        "📋 Все вопросы:",
+        reply_markup=build_question_list_keyboard(
+            questions,
+            page=current_page,
+            per_page=QUESTION_PAGE_SIZE
+            )
+    )
 
 # ✏️ Редактировать вопрос
 @admin_router.callback_query(F.data == "edit_question")
@@ -225,25 +304,6 @@ async def handle_edit_question(callback: CallbackQuery):
 @admin_router.callback_query(F.data == "create_admin")
 async def handle_create_admin(callback: CallbackQuery):
     await callback.message.edit_text("👤 Введите ID пользователя, которого нужно сделать админом")
-
-@admin_router.callback_query(F.data == "back_to_main_menu", AdminPanelState.active)
-async def hande_go_to_main_menu(callback: CallbackQuery, state: FSMContext):
-    await callback.message.delete()
-    await callback.answer()
-
-    photo = FSInputFile("images/Main_menu.png")
-    text = "⚙️ <b>Вы вернулись в главное меню!</b>"
-
-    if callback.from_user.id in ADMIN_IDS:
-        keyboard = admin_main_menu_keyboard()
-    else:
-        keyboard = user_main_menu_keyboard()
-    await callback.message.answer_photo(
-        photo=photo, 
-        caption=text, 
-        reply_markup=keyboard, 
-        parse_mode='HTML')
-    await state.clear()
 
 @admin_router.callback_query(F.data == "cancel")
 async def handle_inline_cancel(callback: CallbackQuery, state: FSMContext):
@@ -256,4 +316,13 @@ async def handle_inline_cancel(callback: CallbackQuery, state: FSMContext):
         text="🛠 Вы вернулись в админ-панель",
         photo=FSInputFile("images/admin_panel.jpg"),
         reply_markup=admin_panel_main_menu
+    )
+
+@admin_router.callback_query(F.data == "back_to_main_menu")
+async def hande_back_to_admin_menu(callback: CallbackQuery):
+    await callback.answer()
+
+    await callback.message.edit_text(
+        "🛠 Вы вернулись в админ-панель",
+        reply_markup=admin_main_menu_keyboard()
     )

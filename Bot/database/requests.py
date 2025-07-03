@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.sql import func
 
 from database.models import async_session, Question, Result, User
@@ -76,3 +76,9 @@ async def get_user_profile(user_id: int):
             "avg_score": round(avg_score or 0, 2),
             "total_rating": round(total_rating or 0, 2),
         }
+
+async def delete_question(question_id: int):
+    async with async_session() as session:
+        stmt = delete(Question).where(Question.id == question_id)
+        await session.execute(stmt)
+        await session.commit()
