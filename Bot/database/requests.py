@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.sql import func
 
 from database.models import async_session, Question, Result, User
@@ -47,3 +47,38 @@ async def get_all_questions():
     async with async_session() as session:
         result = await session.execute(select(Question))
         return result.scalars().all()
+
+async def get_user_profile(user_id: int):
+    async with async_session() as session:
+        # Получаем пользователя
+        result_user = await session.execute(
+            select(User).where(User.id == user_id)
+        )
+        user = result_user.scalar_one_or_none()
+
+        if not user:
+            return None
+
+        # Получаем статистику по результатам
+        result_stats = await session.execute(
+            select(
+                func.count(Result.id),
+                func.avg(Result.score),
+                func.sum(Result.rating_score)
+            ).where(Result.user_id == user_id)
+        )
+        total_tests, avg_score, total_rating = result_stats.one()
+
+        return {
+            "name": user.name,
+            "photo_id": user.photo_id,
+            "total_tests": total_tests or 0,
+            "avg_score": round(avg_score or 0, 2),
+            "total_rating": round(total_rating or 0, 2),
+        }
+
+async def delete_question(question_id: int):
+    async with async_session() as session:
+        stmt = delete(Question).where(Question.id == question_id)
+        await session.execute(stmt)
+        await session.commit()

@@ -6,13 +6,23 @@ from keyboards.test import *
 from keyboards.test_keyboard import *
 from handlers.start.states import TestState
 from database.requests import get_random_questions, save_test_result, get_or_create_user
+from handlers.admin_panel.admin_panel_states import AdminPanelState
+from keyboards.admin_panel_keyboard import admin_panel_back_to_main_menu
 
 start_router = Router()
+
+@start_router.message(AdminPanelState.active)
+async def block_commands_in_admin_mode(message: Message):
+    await message.delete()
+    await message.answer(f"❗ Вы находитесь в админ-панели.\n"
+                         f"Выйдите из неё, чтобы использовать другие команды!",
+                         reply_markup=admin_panel_back_to_main_menu)
+
 
 @start_router.message(F.text == "/start")
 async def cmd_start(message: Message):
     photo = FSInputFile("images/Main_menu.png")
-    text = "👋 Добро пожаловать в главное меню! Выберите действие:"
+    text = "👋 Добро пожаловать в главное меню!"
 
     await get_or_create_user(
         user_id=message.from_user.id,
@@ -112,13 +122,6 @@ async def handle_test(message: Message, state: FSMContext):
     photo = FSInputFile("images/test/start_test.jpg")
     await message.answer_photo(photo=photo, caption=text, reply_markup=test_keyboard)
     await state.set_state(TestState.choosing_difficulty)
-
-
-@start_router.message(F.text == "/profile")
-@start_router.message(F.text == "👤 Профиль")
-async def handle_profile(message: Message):
-    await message.answer("Ваш профиль:")
-
 
 @start_router.message(F.text == "/rate")
 @start_router.message(F.text == "🏆 Рейтинг")
