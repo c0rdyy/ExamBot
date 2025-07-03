@@ -4,10 +4,8 @@ from aiogram.types import Message, CallbackQuery, FSInputFile
 from config.settings import ADMIN_IDS
 from keyboards.test import *
 from keyboards.test_keyboard import *
-from keyboards.admin_panel_keyboard import admin_panel_back_to_main_menu
 from handlers.start.states import TestState
 from database.requests import get_random_questions, save_test_result, get_or_create_user
-from handlers.admin_panel.admin_panel_states import AdminPanelState
 
 start_router = Router()
 
@@ -123,13 +121,6 @@ async def handle_test(message: Message, state: FSMContext):
     await message.answer_photo(photo=photo, caption=text, reply_markup=test_keyboard)
     await state.set_state(TestState.choosing_difficulty)
 
-
-@start_router.message(F.text == "/profile")
-@start_router.message(F.text == "👤 Профиль")
-async def handle_profile(message: Message):
-    await message.answer("Ваш профиль:")
-
-
 @start_router.message(F.text == "/rate")
 @start_router.message(F.text == "🏆 Рейтинг")
 async def handle_rating(message: Message):
@@ -150,3 +141,4 @@ async def handle_help(message: Message):
         "/help — показать справку по командам.\n\n"
     )
     await message.answer(help_text, parse_mode="Markdown")
+
