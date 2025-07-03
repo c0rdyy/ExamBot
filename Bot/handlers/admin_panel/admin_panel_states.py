@@ -5,3 +5,6 @@ class AddQuestionState(StatesGroup):
     options = State()
     correct_index = State()
     difficulty = State()
+
+class AdminPanelState(StatesGroup):
+    active = State()
