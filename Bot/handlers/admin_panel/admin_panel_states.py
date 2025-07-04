@@ -8,3 +8,11 @@ class AddQuestionState(StatesGroup):
 
 class AdminPanelState(StatesGroup):
     active = State()
+    viewing_questions = State()
+
+class EditQuestionState(StatesGroup):
+    choosing_field = State()
+    editing_text = State()
+    editing_options = State()
+    editing_correct_index = State()
+    editing_difficulty = State()

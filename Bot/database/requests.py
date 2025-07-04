@@ -1,4 +1,4 @@
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 from sqlalchemy.sql import func
 
 from database.models import async_session, Question, Result, User
@@ -82,3 +82,35 @@ async def delete_question(question_id: int):
         stmt = delete(Question).where(Question.id == question_id)
         await session.execute(stmt)
         await session.commit()
+
+async def get_question_by_id(question_id: int) -> Question | None:
+    async with async_session() as session:
+        result = await session.execute(
+            select(Question).where(Question.id == question_id)
+        )
+        return result.scalar_one_or_none()
+
+async def update_question(
+    question_id: int,
+    text: str | None = None,
+    options: list[str] | None = None,
+    correct_index: int | None = None,
+    difficulty: str | None = None
+):
+    async with async_session() as session:
+        stmt = update(Question).where(Question.id == question_id)
+
+        values = {}
+        if text is not None:
+            values["text"] = text
+        if options is not None:
+            values["options"] = options
+        if correct_index is not None:
+            values["correct_index"] = correct_index
+        if difficulty is not None:
+            values["difficulty"] = difficulty
+
+        if values:
+            stmt = stmt.values(**values)
+            await session.execute(stmt)
+            await session.commit()
