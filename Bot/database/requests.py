@@ -50,7 +50,7 @@ async def get_all_questions():
 
 async def get_user_profile(user_id: int):
     async with async_session() as session:
-        # Получаем пользователя
+
         result_user = await session.execute(
             select(User).where(User.id == user_id)
         )
@@ -59,7 +59,6 @@ async def get_user_profile(user_id: int):
         if not user:
             return None
 
-        # Получаем статистику по результатам
         result_stats = await session.execute(
             select(
                 func.count(Result.id),
@@ -113,4 +112,22 @@ async def update_question(
         if values:
             stmt = stmt.values(**values)
             await session.execute(stmt)
+            await session.commit()
+
+async def get_all_users():
+    async with async_session() as session:
+        result = await session.execute(select(User).order_by(User.id))
+        return result.scalars().all()
+
+async def get_user_by_id(user_id: int):
+    async with async_session() as session:
+        result = await session.execute(select(User).where(User.id == user_id))
+        return result.scalar_one_or_none()
+
+async def set_admin_status(user_id: int, is_admin: bool):
+    async with async_session() as session:
+        result = await session.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if user:
+            user.is_admin = is_admin
             await session.commit()

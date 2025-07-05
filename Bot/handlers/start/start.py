@@ -1,7 +1,6 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile
 
-from config.settings import ADMIN_IDS
 from keyboards.test import *
 from keyboards.test_keyboard import *
 from handlers.start.states import TestState
@@ -14,12 +13,12 @@ async def cmd_start(message: Message):
     photo = FSInputFile("images/Main_menu.png")
     text = "👋 Добро пожаловать в главное меню!"
 
-    await get_or_create_user(
+    user = await get_or_create_user(
         user_id=message.from_user.id,
         name=message.from_user.full_name
     )
 
-    if message.from_user.id in ADMIN_IDS:
+    if user.is_admin:
         keyboard = admin_main_menu_keyboard()
     else:
         keyboard = user_main_menu_keyboard()

@@ -9,6 +9,7 @@ class AddQuestionState(StatesGroup):
 class AdminPanelState(StatesGroup):
     active = State()
     viewing_questions = State()
+    viewing_users = State()
 
 class EditQuestionState(StatesGroup):
     choosing_field = State()

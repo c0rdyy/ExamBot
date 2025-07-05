@@ -4,15 +4,20 @@ from aiogram.fsm.context import FSMContext
 
 from handlers.admin_panel.admin_panel_states import *
 from keyboards.admin_panel_keyboard import *
+from keyboards.test import admin_main_menu_keyboard
 from database.requests import (
     add_question, 
     get_all_questions, 
     delete_question,
     update_question,
-    get_question_by_id
+    get_question_by_id,
+    get_all_users,
+    get_user_by_id,
+    set_admin_status
     )
 
 QUESTION_PAGE_SIZE = 5
+USER_PAGE_SIZE = 5
 
 admin_router = Router()
 
@@ -668,11 +673,139 @@ async def handle_back_to_view_question(callback: CallbackQuery, state: FSMContex
     await state.update_data(current_page=current_page)
     await state.set_state(AdminPanelState.viewing_questions)
 
+###################################################################################################
 
-# 👤 Назначить админа
-@admin_router.callback_query(F.data == "users_list")
-async def handle_create_admin(callback: CallbackQuery):
-    await callback.message.edit_text("👤 Введите ID пользователя, которого нужно сделать админом")
+# 👤 Список пользователей
+@admin_router.callback_query(F.data == "all_users")
+async def handle_all_users(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    users = await get_all_users()
+    await state.update_data(user_list=users)
+
+    panel_msg_id = (await state.get_data()).get("panel_msg_id")
+    await callback.bot.edit_message_caption(
+        chat_id=callback.message.chat.id,
+        message_id=panel_msg_id,
+        caption="📋 Все пользователи:",
+        reply_markup=build_user_list_keyboard(users, page=0, per_page=USER_PAGE_SIZE)
+    )
+    await state.set_state(AdminPanelState.viewing_users)
+    await state.update_data(current_user_page=0)
+
+@admin_router.callback_query(F.data.startswith("users_page_"))
+async def handle_user_page(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    page = int(callback.data.split("_")[-1])
+    data = await state.get_data()
+    users = data.get("user_list", [])
+    panel_msg_id = data.get("panel_msg_id")
+
+    await callback.bot.edit_message_caption(
+        chat_id=callback.message.chat.id,
+        message_id=panel_msg_id,
+        caption="📋 Все пользователи:",
+        reply_markup=build_user_list_keyboard(users, page=page, per_page=USER_PAGE_SIZE)
+    )
+    await state.update_data(current_user_page=page)
+
+@admin_router.callback_query(F.data.startswith("view_user_"))
+async def handle_view_user(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    user_id = int(callback.data.split("_")[-1])
+
+    user = await get_user_by_id(user_id)
+    if not user:
+        await callback.answer("Пользователь не найден")
+        return
+
+    panel_msg_id = (await state.get_data()).get("panel_msg_id")
+
+    text = (
+        f"🦋 <b>Профиль пользователя</b>\n"
+        f"<b>├</b>🆔 ID: {user.id}\n"
+        f"<b>├</b>🦋 Имя: {user.name or '—'}\n"
+        f"<b>├</b>🛡 Роль: {'Админ' if user.is_admin else 'Пользователь'}"
+    )
+
+    await callback.bot.edit_message_caption(
+        chat_id=callback.message.chat.id,
+        message_id=panel_msg_id,
+        caption=text,
+        reply_markup=user_profile_keyboard(user.id, user.is_admin),
+        parse_mode="HTML"
+    )
+
+@admin_router.callback_query(F.data.startswith("grant_admin_"))
+async def handle_grant_admin(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    user_id = int(callback.data.split("_")[-1])
+
+    await set_admin_status(user_id, True)
+
+    user = await get_user_by_id(user_id)
+    panel_msg_id = (await state.get_data()).get("panel_msg_id")
+
+    text = (
+        f"🦋 <b>Профиль пользователя</b>\n"
+        f"<b>├</b>🆔 ID: {user.id}\n"
+        f"<b>├</b>🦋 Имя: {user.name or '—'}\n"
+        f"<b>├</b>🛡 Роль: {'Админ' if user.is_admin else 'Пользователь'}\n\n"
+        f"✅ Права администратора выданы"
+    )
+
+    await callback.bot.edit_message_caption(
+        chat_id=callback.message.chat.id,
+        message_id=panel_msg_id,
+        caption=text,
+        reply_markup=user_profile_keyboard(user.id, user.is_admin),
+        parse_mode="HTML"
+    )
+
+@admin_router.callback_query(F.data.startswith("revoke_admin_"))
+async def handle_revoke_admin(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    user_id = int(callback.data.split("_")[-1])
+
+    await set_admin_status(user_id, False)
+
+    user = await get_user_by_id(user_id)
+    panel_msg_id = (await state.get_data()).get("panel_msg_id")
+
+    text = (
+        f"🦋 <b>Профиль пользователя</b>\n"
+        f"<b>├</b>🆔 ID: {user.id}\n"
+        f"<b>├</b>🦋 Имя: {user.name or '—'}\n"
+        f"<b>├</b>🛡 Роль: {'Админ' if user.is_admin else 'Пользователь'}\n\n"
+        f"🗑 Права администратора убраны"
+    )
+
+    await callback.bot.edit_message_caption(
+        chat_id=callback.message.chat.id,
+        message_id=panel_msg_id,
+        caption=text,
+        reply_markup=user_profile_keyboard(user.id, user.is_admin),
+        parse_mode="HTML"
+    )
+
+@admin_router.callback_query(F.data == "back_to_user_list")
+async def handle_back_to_user_list(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    data = await state.get_data()
+    users = data.get("user_list", [])
+    page = data.get("current_user_page", 0)
+    panel_msg_id = data.get("panel_msg_id")
+
+    await callback.bot.edit_message_caption(
+        chat_id=callback.message.chat.id,
+        message_id=panel_msg_id,
+        caption="📋 Все пользователи:",
+        reply_markup=build_user_list_keyboard(users, page=page, per_page=USER_PAGE_SIZE)
+    )
+
+###################################################################################################
 
 @admin_router.callback_query(F.data == "cancel")
 async def handle_inline_cancel(callback: CallbackQuery, state: FSMContext):
@@ -706,3 +839,19 @@ async def handle_back_to_admin_menu(callback: CallbackQuery, state: FSMContext):
             )
 
     await state.set_state(AdminPanelState.active)
+
+
+@admin_router.callback_query(F.data == "back_to_main_menu")
+async def handle_back_to_main_menu(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await callback.message.delete()
+    await state.clear()
+
+    photo = FSInputFile("images/Main_menu.png")
+    text = "👋 Вы вернулись в главное меню!"
+
+    await callback.message.answer_photo(
+        photo=photo,
+        caption=text,
+        reply_markup=admin_main_menu_keyboard()
+    )

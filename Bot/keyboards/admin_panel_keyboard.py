@@ -1,11 +1,11 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from math import ceil
+from typing import List
+from database.models import User
 
 admin_panel_main_menu = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="📋 Все вопросы", callback_data="all_questions"),
     InlineKeyboardButton(text="➕ Добавить вопрос", callback_data="add_question")],
-    [InlineKeyboardButton(text="👤 Список пользователей", callback_data="users_list")],
+    [InlineKeyboardButton(text="👤 Список пользователей", callback_data="all_users")],
     [InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_main_menu")]
     ])
 
@@ -161,3 +161,52 @@ def editting_difficulty_choice_keyboard() -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="Отмена", callback_data="cancel_edit_field")]
         ]
     )
+
+def build_user_list_keyboard(users: List[User], page: int, per_page: int):
+    start = page * per_page
+    end = start + per_page
+    buttons = [
+        [InlineKeyboardButton(
+            text=f"{u.name or 'Без имени'} (ID: {u.id})", 
+            callback_data=f"view_user_{u.id}"
+        )]
+        for u in users[start:end]
+    ]
+
+    nav_buttons = []
+    if start > 0:
+        nav_buttons.append(
+            InlineKeyboardButton(text="⬅️", callback_data=f"users_page_{page - 1}")
+        )
+    if end < len(users):
+        nav_buttons.append(
+            InlineKeyboardButton(text="➡️", callback_data=f"users_page_{page + 1}")
+        )
+    if nav_buttons:
+        buttons.append(nav_buttons)
+
+    buttons.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_admin_menu")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def user_profile_keyboard(user_id: int, is_admin: bool):
+    buttons = []
+    if is_admin:
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text="🗑 Убрать права администратора", 
+                    callback_data=f"revoke_admin_{user_id}")
+            ])
+    else:
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text="✅ Назначить администратором", 
+                    callback_data=f"grant_admin_{user_id}")
+            ])
+
+    buttons.append(
+        [
+            InlineKeyboardButton(text="🔙 Назад к списку", callback_data="back_to_user_list")
+        ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
