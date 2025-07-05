@@ -1,5 +1,6 @@
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, desc
 from sqlalchemy.sql import func
+from datetime import datetime
 
 from database.models import async_session, Question, Result, User
 
@@ -9,16 +10,6 @@ async def get_random_questions(difficulty: str, limit: int = 10):
             select(Question).where(Question.difficulty == difficulty).order_by(func.random()).limit(limit)
         )
         return result.scalars().all()
-
-async def save_test_result(user_id: int, score: int, rating_score: float, difficulty: str):
-    async with async_session() as session:
-        session.add(Result(
-            user_id=user_id,
-            score=score,
-            rating_score=rating_score,
-            difficulty=difficulty
-        ))
-        await session.commit()
 
 async def get_or_create_user(user_id: int, name: str) -> User:
     async with async_session() as session:
@@ -131,3 +122,42 @@ async def set_admin_status(user_id: int, is_admin: bool):
         if user:
             user.is_admin = is_admin
             await session.commit()
+
+async def get_user_rank(user_id: int) -> int:
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).order_by(User.total_score.desc())
+        )
+        users = result.scalars().all()
+        for i, user in enumerate(users, start=1):
+            if user.id == user_id:
+                return i
+        return -1
+
+async def get_top_users(limit: int = 10) -> list[User]:
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).order_by(desc(User.total_score)).limit(limit)
+        )
+        return result.scalars().all()
+
+async def save_test_result(user_id: int, score: int, rating_score: float, difficulty: str):
+    async with async_session() as session:
+        new_result = Result(
+            user_id=user_id,
+            score=score,
+            rating_score=rating_score,
+            difficulty=difficulty,
+            timestamp=datetime.now()
+        )
+        session.add(new_result)
+
+        result = await session.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if user:
+            user.tests_passed += 1
+            user.total_score += rating_score
+            if user.tests_passed > 0:
+                user.average_score = ((user.average_score * (user.tests_passed - 1)) + score) / user.tests_passed
+
+        await session.commit()
