@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import Message, CallbackQuery, FSInputFile, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 
 from keyboards.test import *
@@ -11,7 +11,8 @@ from database.requests import (
     get_or_create_user,
     get_user_rank,
     get_user_by_id,
-    get_top_users)
+    get_top_users,
+    update_user_photo)
 
 start_router = Router()
 
@@ -78,12 +79,17 @@ async def ask_next_question(callback: CallbackQuery, state: FSMContext):
             f"🏆 Место в рейтинге: <b>#{rank}</b>"
         )
 
-        await callback.bot.edit_message_caption(
+        photo = FSInputFile("images/test/test_results.jpg")
+
+        await callback.bot.edit_message_media(
+            media=InputMediaPhoto(
+                media=photo,
+                caption=result_text,
+                parse_mode="HTML"
+            ),
             chat_id=callback.message.chat.id,
             message_id=msg_id,
-            caption=result_text,
-            reply_markup=test_results_keyboard,
-            parse_mode="HTML"
+            reply_markup=test_results_keyboard
         )
 
         await state.update_data(
@@ -158,10 +164,18 @@ async def handle_view_rating(callback: CallbackQuery):
     for i, user in enumerate(users, 1):
         text += f"{i}. {user.name or '—'} — {user.total_score}\n"
 
-    await callback.message.edit_caption(
-        caption=text, 
-        reply_markup=back_to_test_result_keyboard,
-        parse_mode="HTML")
+    photo = FSInputFile("images/rating.jpg")
+
+    await callback.bot.edit_message_media(
+        media=InputMediaPhoto(
+            media=photo,
+            caption=text,
+            parse_mode="HTML"
+        ),
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        reply_markup=back_to_test_result_keyboard
+    )
 
 @start_router.callback_query(F.data == "back_to_test_result")
 async def handle_back_to_test_result(callback: CallbackQuery, state: FSMContext):
@@ -182,12 +196,17 @@ async def handle_back_to_test_result(callback: CallbackQuery, state: FSMContext)
         f"🏆 Ваше место в рейтинге: {rank}"
     )
 
-    await callback.bot.edit_message_caption(
+    photo = FSInputFile("images/test/test_results.jpg")
+
+    await callback.bot.edit_message_media(
+        media=InputMediaPhoto(
+            media=photo,
+            caption=text,
+            parse_mode="HTML"
+        ),
         chat_id=callback.message.chat.id,
         message_id=msg_id,
-        caption=text,
-        reply_markup=test_results_keyboard,
-        parse_mode="HTML"
+        reply_markup=test_results_keyboard
     )
 
 

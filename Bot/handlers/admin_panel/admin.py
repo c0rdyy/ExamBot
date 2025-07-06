@@ -851,7 +851,7 @@ async def handle_back_to_main_menu(callback: CallbackQuery, state: FSMContext):
     text = "👋 Вы вернулись в главное меню!"
 
     await callback.message.answer_photo(
+        text=text,
         photo=photo,
-        caption=text,
         reply_markup=admin_main_menu_keyboard()
     )
