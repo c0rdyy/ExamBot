@@ -161,8 +161,6 @@ async def save_test_result(user_id: int, score: int, rating_score: float, diffic
                 user.average_score = ((user.average_score * (user.tests_passed - 1)) + score) / user.tests_passed
 
         await session.commit()
-<<<<<<< HEAD
-=======
 
 async def update_user_name(user_id: int, name: str):
     async with async_session() as session:
@@ -177,4 +175,3 @@ async def update_user_photo(user_id: int, file_id: str):
         if user:
             user.photo_id = file_id
             await session.commit()
->>>>>>> f92aca69bfc9f7f56b2999c0f259b60b5f937456

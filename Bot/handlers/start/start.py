@@ -1,11 +1,8 @@
 from aiogram import Router, F
-<<<<<<< HEAD
-from aiogram.types import Message, CallbackQuery, FSInputFile
-=======
 from aiogram.types import Message, CallbackQuery, FSInputFile, InputMediaPhoto
->>>>>>> f92aca69bfc9f7f56b2999c0f259b60b5f937456
 from aiogram.fsm.context import FSMContext
 
+from keyboards.help_keyboard import help_back_keyboard
 from keyboards.test import *
 from keyboards.test_keyboard import *
 from handlers.start.states import TestState
@@ -15,12 +12,8 @@ from database.requests import (
     get_or_create_user,
     get_user_rank,
     get_user_by_id,
-<<<<<<< HEAD
-    get_top_users)
-=======
     get_top_users,
     update_user_photo)
->>>>>>> f92aca69bfc9f7f56b2999c0f259b60b5f937456
 
 start_router = Router()
 
@@ -87,14 +80,6 @@ async def ask_next_question(callback: CallbackQuery, state: FSMContext):
             f"🏆 Место в рейтинге: <b>#{rank}</b>"
         )
 
-<<<<<<< HEAD
-        await callback.bot.edit_message_caption(
-            chat_id=callback.message.chat.id,
-            message_id=msg_id,
-            caption=result_text,
-            reply_markup=test_results_keyboard,
-            parse_mode="HTML"
-=======
         photo = FSInputFile("images/test/test_results.jpg")
 
         await callback.bot.edit_message_media(
@@ -106,7 +91,6 @@ async def ask_next_question(callback: CallbackQuery, state: FSMContext):
             chat_id=callback.message.chat.id,
             message_id=msg_id,
             reply_markup=test_results_keyboard
->>>>>>> f92aca69bfc9f7f56b2999c0f259b60b5f937456
         )
 
         await state.update_data(
@@ -181,12 +165,10 @@ async def handle_view_rating(callback: CallbackQuery):
     for i, user in enumerate(users, 1):
         text += f"{i}. {user.name or '—'} — {user.total_score}\n"
 
-<<<<<<< HEAD
     await callback.message.edit_caption(
         caption=text, 
         reply_markup=back_to_test_result_keyboard,
         parse_mode="HTML")
-=======
     photo = FSInputFile("images/rating.jpg")
 
     await callback.bot.edit_message_media(
@@ -199,7 +181,6 @@ async def handle_view_rating(callback: CallbackQuery):
         message_id=callback.message.message_id,
         reply_markup=back_to_test_result_keyboard
     )
->>>>>>> f92aca69bfc9f7f56b2999c0f259b60b5f937456
 
 @start_router.callback_query(F.data == "back_to_test_result")
 async def handle_back_to_test_result(callback: CallbackQuery, state: FSMContext):
@@ -220,14 +201,6 @@ async def handle_back_to_test_result(callback: CallbackQuery, state: FSMContext)
         f"🏆 Ваше место в рейтинге: {rank}"
     )
 
-<<<<<<< HEAD
-    await callback.bot.edit_message_caption(
-        chat_id=callback.message.chat.id,
-        message_id=msg_id,
-        caption=text,
-        reply_markup=test_results_keyboard,
-        parse_mode="HTML"
-=======
     photo = FSInputFile("images/test/test_results.jpg")
 
     await callback.bot.edit_message_media(
@@ -239,7 +212,6 @@ async def handle_back_to_test_result(callback: CallbackQuery, state: FSMContext)
         chat_id=callback.message.chat.id,
         message_id=msg_id,
         reply_markup=test_results_keyboard
->>>>>>> f92aca69bfc9f7f56b2999c0f259b60b5f937456
     )
 
 
@@ -265,24 +237,41 @@ async def handle_rating(message: Message):
     users = await get_top_users()
     text = "🏆 <b>Рейтинг пользователей</b>\n\n"
     for i, user in enumerate(users, 1):
-        text += f"{i}. {user.name or '—'} — {user.total_score}\n"
+        medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(i, f"{i}.")
+        name = user.name or "—"
+        text += f"{medal} <b>{name}</b> — <code>{user.total_score}</code>\n"
 
-    await message.answer(text, parse_mode="HTML")
+    
+    photo = FSInputFile("images/rating.jpg")
+
+    await message.answer_photo(
+        photo=photo,
+        caption=text,
+        parse_mode="HTML",
+        reply_markup=help_back_keyboard 
+    )
 
 
 
 @start_router.message(F.text == "/help")
 @start_router.message(F.text == "❓ Помощь")
 async def handle_help(message: Message):
-    help_text = (
-        "ℹ️ *О боте:*\n"
+    photo = FSInputFile("images/help.jpg")
+    caption = (
+        "ℹ️ <b>О боте:</b>\n"
         "Этот бот предназначен для прохождения тестов по объектно-ориентированному программированию (ООП).\n\n"
-        "📌 *Команды и кнопки:*\n"
+        "📌 <b>Команды и кнопки:</b>\n"
         "/start - запустить бота.\n"
         "/test — начать тест.\n"
         "/profile — открыть профиль.\n"
         "/rate — посмотреть свой рейтинг среди других пользователей.\n"
         "/help — показать справку по командам.\n\n"
     )
-    await message.answer(help_text, parse_mode="Markdown")
+    
+    await message.answer_photo(
+        photo=photo,
+        caption=caption,
+        parse_mode="HTML",
+        reply_markup=help_back_keyboard
+    )
 
