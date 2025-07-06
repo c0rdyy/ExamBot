@@ -163,12 +163,10 @@ async def handle_view_rating(callback: CallbackQuery):
     users = await get_top_users()
     text = "🏆 <b>Рейтинг пользователей</b>\n\n"
     for i, user in enumerate(users, 1):
-        text += f"{i}. {user.name or '—'} — {user.total_score}\n"
+        medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(i, f"{i}.")
+        name = user.name or "—"
+        text += f"{medal} <b>{name}</b> — <code>{user.total_score}</code>\n"
 
-    await callback.message.edit_caption(
-        caption=text, 
-        reply_markup=back_to_test_result_keyboard,
-        parse_mode="HTML")
     photo = FSInputFile("images/rating.jpg")
 
     await callback.bot.edit_message_media(
@@ -234,6 +232,8 @@ async def handle_test(message: Message, state: FSMContext):
 @start_router.message(F.text == "/rate")
 @start_router.message(F.text == "🏆 Рейтинг")
 async def handle_rating(message: Message):
+    await message.delete()
+
     users = await get_top_users()
     text = "🏆 <b>Рейтинг пользователей</b>\n\n"
     for i, user in enumerate(users, 1):
@@ -241,7 +241,6 @@ async def handle_rating(message: Message):
         name = user.name or "—"
         text += f"{medal} <b>{name}</b> — <code>{user.total_score}</code>\n"
 
-    
     photo = FSInputFile("images/rating.jpg")
 
     await message.answer_photo(
@@ -256,6 +255,7 @@ async def handle_rating(message: Message):
 @start_router.message(F.text == "/help")
 @start_router.message(F.text == "❓ Помощь")
 async def handle_help(message: Message):
+    await message.delete()
     photo = FSInputFile("images/help.jpg")
     caption = (
         "ℹ️ <b>О боте:</b>\n"
